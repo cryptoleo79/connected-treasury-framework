@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connected Treasury Framework — Parameter Simulator</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, Roboto, sans-serif;
+    background: #fafaf7;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 24px 16px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 12px; }
+  h1 { font-size: 24px; font-weight: 500; margin: 0 0 4px; flex: 1; }
+  .sub { color: #666; font-size: 14px; margin: 0 0 24px; }
+  .lang-toggle { display: flex; gap: 4px; flex-shrink: 0; }
+  .lang-toggle button {
+    background: transparent;
+    border: 0.5px solid rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #666;
+    font-family: inherit;
+  }
+  .lang-toggle button.active { background: #534AB7; color: #fff; border-color: #534AB7; }
+  .grid { display: grid; gap: 18px 24px; margin-bottom: 24px; }
+  .grid-sliders { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .grid-cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .slider-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+  .slider-row label { color: #666; }
+  .slider-row span { font-weight: 500; }
+  input[type=range] { width: 100%; accent-color: #534AB7; }
+  .card { background: #ffffff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 12px; }
+  .card-label { font-size: 12px; color: #666; }
+  .card-value { font-size: 20px; font-weight: 500; margin-top: 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px; font-size: 12px; color: #666; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 3px; }
+  .swatch-user { background: #534AB7; }
+  .chart-wrap { position: relative; width: 100%; height: 320px; background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 12px; }
+  .footer { font-size: 12px; color: #888; margin-top: 24px; padding-top: 16px; border-top: 0.5px solid rgba(0,0,0,0.1); }
+  .pos { color: #1D9E75; }
+  .neg { color: #E24B4A; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="header">
+<div>
+<h1 id="t-title">Connected Treasury Framework — Parameter Simulator</h1>
+<p class="sub" id="t-sub">Adjust the parameters to see how the Cardano on-chain treasury would behave under different policy choices. The red dashed line is the do-nothing baseline; the purple line is your scenario.</p>
+</div>
+<div class="lang-toggle">
+<button id="btn-en" class="active" onclick="setLang('en')">EN</button>
+<button id="btn-ja" onclick="setLang('ja')">日本語</button>
+</div>
+</div>
+<div class="grid grid-sliders">
+<div>
+<div class="slider-row"><label id="t-l-yield">Annual yield rate</label><span id="v-yield">4.0%</span></div>
+<input type="range" id="s-yield" min="0" max="8" step="0.1" value="4">
+</div>
+<div>
+<div class="slider-row"><label id="t-l-spend">Annual spending cap</label><span id="v-spend">220M ADA</span></div>
+<input type="range" id="s-spend" min="100" max="400" step="10" value="220">
+</div>
+<div>
+<div class="slider-row"><label id="t-l-loan">Loan return rate</label><span id="v-loan">25%</span></div>
+<input type="range" id="s-loan" min="0" max="50" step="1" value="25">
+</div>
+<div>
+<div class="slider-row"><label id="t-l-reserve">Strategic reserve</label><span id="v-reserve">12%</span></div>
+<input type="range" id="s-reserve" min="0" max="25" step="1" value="12">
+</div>
+</div>
+<div class="grid grid-cards">
+<div class="card"><div class="card-label" id="t-c-yield">Yr 1 yield revenue</div><div class="card-value" id="m-yield">67M ADA</div></div>
+<div class="card"><div class="card-label" id="t-c-net">Yr 2+ net change</div><div class="card-value" id="m-net">-58M</div></div>
+<div class="card"><div class="card-label" id="t-c-depletion">Depletion year</div><div class="card-value" id="m-depletion">2045</div></div>
+<div class="card"><div class="card-label" id="t-c-10year">Balance at year 10</div><div class="card-value" id="m-10year">839M</div></div>
+</div>
+<div class="legend">
+<span class="legend-item"><span class="swatch swatch-user"></span><span id="t-lg-user">Your scenario</span></span>
+<span class="legend-item"><span class="swatch" style="border-top:1px dashed #E24B4A;border-bottom:1px dashed #E24B4A;background:transparent"></span><span id="t-lg-sq">Status quo (no change)</span></span>
+</div>
+<div class="chart-wrap">
+<canvas id="sim" role="img" aria-label="20-year treasury balance projection."></canvas>
+</div>
+<p class="footer" id="t-footer">
+Baseline assumptions: treasury starts at 1,621M ADA. Status quo assumes 350M ADA annual outflow and 40M ADA annual replenishment with no yield. Loan return is modeled as a one-year-lagged fraction of annual spending. Strategic reserve is assumed to earn a blended 5% yield (BTC + stablecoin). Yield revenue is gross before reinvestment. Simulator output is a directional model, not financial advice.
+</p>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const i18n = {
+  en: {
+    title: "Connected Treasury Framework — Parameter Simulator",
+    sub: "Adjust the parameters to see how the Cardano on-chain treasury would behave under different policy choices. The red dashed line is the do-nothing baseline; the purple line is your scenario.",
+    lYield: "Annual yield rate", lSpend: "Annual spending cap", lLoan: "Loan return rate", lReserve: "Strategic reserve",
+    cYield: "Yr 1 yield revenue", cNet: "Yr 2+ net change", cDepletion: "Depletion year", c10year: "Balance at year 10",
+    lgUser: "Your scenario", lgSq: "Status quo (no change)",
+    sustainable: "Sustainable", yAxis: "Treasury balance (M ADA)", xAxis: "Year",
+    footer: "Baseline assumptions: treasury starts at 1,621M ADA. Status quo assumes 350M ADA annual outflow and 40M ADA annual replenishment with no yield. Loan return is modeled as a one-year-lagged fraction of annual spending. Strategic reserve is assumed to earn a blended 5% yield (BTC + stablecoin). Yield revenue is gross before reinvestment. Simulator output is a directional model, not financial advice."
+  },
+  ja: {
+    title: "Connected Treasury Framework — パラメーターシミュレーター",
+    sub: "パラメーターを調整して、異なる政策の下でCardanoのオンチェーン財務がどのように推移するかを確認できます。赤の点線は現状維持のベースライン、紫の線はあなたのシナリオです。",
+    lYield: "年間利回り", lSpend: "年間支出上限", lLoan: "ローン返済率", lReserve: "戦略的準備金",
+    cYield: "1年目の利回り収益", cNet: "2年目以降の純変化", cDepletion: "枯渇予想年", c10year: "10年後の残高",
+    lgUser: "あなたのシナリオ", lgSq: "現状維持(変更なし)",
+    sustainable: "持続可能", yAxis: "財務残高(百万ADA)", xAxis: "年",
+    footer: "前提条件:財務は16.21億ADAから開始。現状維持は年間3.5億ADAの流出と4,000万ADAの補充、利回りなしを想定。ローン返済は年間支出の1年遅延分として計算。戦略的準備金はBTC+ステーブルコインで混合5%の利回りを想定。利回り収益は再投資前の総額。シミュレーターの出力は方向性のモデルであり、財務助言ではありません。"
+  }
+};
+let currentLang = 'en';
+let chart;
+function setLang(lang) {
+  currentLang = lang;
+  const t = i18n[lang];
+  document.documentElement.lang = lang;
+  document.getElementById('t-title').textContent = t.title;
+  document.getElementById('t-sub').textContent = t.sub;
+  document.getElementById('t-l-yield').textContent = t.lYield;
+  document.getElementById('t-l-spend').textContent = t.lSpend;
+  document.getElementById('t-l-loan').textContent = t.lLoan;
+  document.getElementById('t-l-reserve').textContent = t.lReserve;
+  document.getElementById('t-c-yield').textContent = t.cYield;
+  document.getElementById('t-c-net').textContent = t.cNet;
+  document.getElementById('t-c-depletion').textContent = t.cDepletion;
+  document.getElementById('t-c-10year').textContent = t.c10year;
+  document.getElementById('t-lg-user').textContent = t.lgUser;
+  document.getElementById('t-lg-sq').textContent = t.lgSq;
+  document.getElementById('t-footer').textContent = t.footer;
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-ja').classList.toggle('active', lang === 'ja');
+  if (chart) {
+    chart.options.scales.y.title.text = t.yAxis;
+    chart.options.scales.x.title.text = t.xAxis;
+    chart.update('none');
+  }
+  recompute();
+}
+function compute() {
+  const yieldRate = parseFloat(document.getElementById('s-yield').value);
+  const spend = parseFloat(document.getElementById('s-spend').value);
+  const loan = parseFloat(document.getElementById('s-loan').value);
+  const reserve = parseFloat(document.getElementById('s-reserve').value);
+  const baseline = 40;
+  const startBal = 1621;
+  let bal = startBal;
+  let sq = startBal;
+  let depletionYear = null;
+  const years = [], userSeries = [], sqSeries = [];
+  for (let y = 0; y <= 20; y++) {
+    years.push(2026 + y);
+    userSeries.push(Math.round(bal));
+    sqSeries.push(Math.round(sq));
+    const stakingBase = bal * (1 - reserve / 100);
+    const yieldAdd = stakingBase * yieldRate / 100 + (bal - stakingBase) * 0.05;
+    const loanReturn = y >= 1 ? spend * loan / 100 : 0;
+    const next = bal + yieldAdd + baseline + loanReturn - spend;
+    if (next <= 0 && depletionYear === null) depletionYear = 2026 + y + 1;
+    bal = Math.max(0, next);
+    sq = Math.max(0, sq + baseline - 350);
+  }
+  return { years, userSeries, sqSeries, depletionYear, yieldRate, spend, loan, reserve, baseline };
+}
+function recompute() {
+  const r = compute();
+  const t = i18n[currentLang];
+  const unit = currentLang === 'ja' ? '百万ADA' : 'M ADA';
+  const unitShort = currentLang === 'ja' ? '百万' : 'M';
+  document.getElementById('v-yield').textContent = r.yieldRate.toFixed(1) + '%';
+  document.getElementById('v-spend').textContent = Math.round(r.spend) + unit;
+  document.getElementById('v-loan').textContent = Math.round(r.loan) + '%';
+  document.getElementById('v-reserve').textContent = Math.round(r.reserve) + '%';
+  const stakingBase = 1621 * (1 - r.reserve / 100);
+  const yieldRev = Math.round(stakingBase * r.yieldRate / 100 + (1621 - stakingBase) * 0.05);
+  const netY2 = Math.round(yieldRev + r.baseline + r.spend * r.loan / 100 - r.spend);
+  const tenYear = Math.round(r.userSeries[10]);
+  document.getElementById('m-yield').textContent = yieldRev + unit;
+  const netEl = document.getElementById('m-net');
+  netEl.textContent = (netY2 >= 0 ? '+' : '') + netY2 + unitShort;
+  netEl.className = 'card-value ' + (netY2 >= 0 ? 'pos' : 'neg');
+  document.getElementById('m-depletion').textContent = r.depletionYear || t.sustainable;
+  document.getElementById('m-10year').textContent = tenYear.toLocaleString() + unitShort;
+  if (chart) {
+    chart.data.labels = r.years;
+    chart.data.datasets[0].data = r.userSeries;
+    chart.data.datasets[1].data = r.sqSeries;
+    chart.update('none');
+  }
+}
+['s-yield','s-spend','s-loan','s-reserve'].forEach(id => {
+  document.getElementById(id).addEventListener('input', recompute);
+});
+function init() {
+  const r = compute();
+  const t = i18n[currentLang];
+  chart = new Chart(document.getElementById('sim'), {
+    type: 'line',
+    data: {
+      labels: r.years,
+      datasets: [
+        { label: 'user', data: r.userSeries, borderColor: '#534AB7', backgroundColor: 'rgba(83,74,183,0.08)', borderWidth: 2.5, pointRadius: 0, tension: 0.15, fill: true },
+        { label: 'sq', data: r.sqSeries, borderColor: '#E24B4A', backgroundColor: '#E24B4A', borderWidth: 2, borderDash: [5,3], pointRadius: 0, tension: 0.15, fill: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => {
+          const labelKey = ctx.dataset.label === 'user' ? 'lgUser' : 'lgSq';
+          const unit = currentLang === 'ja' ? '百万ADA' : 'M ADA';
+          return i18n[currentLang][labelKey] + ': ' + Math.round(ctx.parsed.y).toLocaleString() + unit;
+        }}}
+      },
+      scales: {
+        y: { title: { display: true, text: t.yAxis }, ticks: { callback: (v) => v.toLocaleString() }, beginAtZero: true },
+        x: { title: { display: true, text: t.xAxis } }
+      }
+    }
+  });
+  recompute();
+}
+init();
+</script>
+</body>
+</html>
