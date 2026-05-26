@@ -1,3 +1,5 @@
+🇯🇵 [日本語版](../ja/02_proposal.md)
+
 # Connected Treasury Framework — Phase 1 Pilot
 
 **Treasury Withdrawal Governance Action · 2026 Cycle**
